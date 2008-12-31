@@ -141,7 +141,6 @@ module AjaxfulRating # :nodoc:
     def current_average(rateable, dimension = nil)
       # I18n.t('ajaxful_rating.stars.current_average', :average => rateable.rate_average(dimension),
       #   :max => rateable.class.max_rate_value, :default => "Current rating: {{average}}/{{max}}")
-
       "Current rating: #{rateable.rate_average(false, dimension)}/#{rateable.class.max_rate_value}"
     end
   

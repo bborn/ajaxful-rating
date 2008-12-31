@@ -82,7 +82,7 @@ module AjaxfulRating # :nodoc:
         rate.send "#{self.class.user_class_name}_id=", user.id
       end if rate.new_record?
       rate.save!
-      # self.update_cached_average
+      self.update_cached_average(dimension)
     end
 
     # Returns an array with all users that have rated this object.
@@ -111,7 +111,6 @@ module AjaxfulRating # :nodoc:
     # Instance's total rates.
     def total_rates(dimension = nil)
       if dimension
-        # self.send("#{dimension}_rates").send 'count'
         Rate.count(:conditions => ["rateable_id = ? AND rateable_type = ? AND dimension = ?", self.id, self.class.name, dimension])
       else
         rates.count
@@ -122,7 +121,6 @@ module AjaxfulRating # :nodoc:
     def rates_sum(dimension = nil)
       if dimension
         Rate.sum(:stars, :conditions => "rateable_id = '#{self.id}' AND rateable_type = '#{self.class.name}' AND dimension = '#{dimension}'")
-        # self.send("#{dimension}_rates").send('sum', :stars)
       else
         rates.sum(:stars)
       end
@@ -132,18 +130,22 @@ module AjaxfulRating # :nodoc:
     #
     # Pass false as param to force the calculation if you are caching it.
     def rate_average(cached = true, dimension = nil)
-      # avg = if cached && self.class.caching_average?
-      #   send(self.class.options[:cache_column]).to_f
-      # else
-      avg = self.rates_sum(dimension).to_f / self.total_rates(dimension).to_f
-      # end
+      avg = if cached && self.class.caching_average?
+        send(self.class.options[:cache_column]).to_f
+      else
+        avg = self.rates_sum(dimension).to_f / self.total_rates(dimension).to_f
+      end
       avg.nan? ? 0.0 : avg
     end
 
+    def caching_column_name(dimension)
+      self.class.caching_column_name(dimension)
+    end
+
     # Updates the cached average column in the rateable model.
-    def update_cached_average
-      if self.class.caching_average?
-        send("#{self.class.options[:cache_column]}=", self.rate_average(false))
+    def update_cached_average(dimension = nil)
+      if self.class.caching_average?(dimension)
+        send("#{caching_column_name(dimension)}=", self.rate_average(false, dimension))
         save!
       end
     end
@@ -189,7 +191,7 @@ module AjaxfulRating # :nodoc:
       find_by_sql(sql)
     end
 
-    # Indicates if the rateable model is able to cache the rate average.
+    # Indicates if the rateable model is able to cache the rate average (with optional dimension parameter).
     #
     # Include a column named +rating_average+ in your rateable model with
     # default null, as decimal:
@@ -200,8 +202,18 @@ module AjaxfulRating # :nodoc:
     #
     #   ajaxful_rateable :cache_column => :my_custom_column
     #
-    def caching_average?
-      column_names.include?(options[:cache_column].to_s)
+    # To use with dimensions, you'll need a caching column for each dimension you want cached. For example, if your
+    # cache_column is called 'rating_average', and you want to cache the average for a dimension called 'spelling', 
+    # you'd need to add a column to the rateable model called 'rating_average_spelling':
+    #   t.decimal :rating_average_spelling, :precision => 3, :scale => 1, :default => 0    
+    def caching_average?(dimension = nil)
+      column_names.include?(caching_column_name(dimension))
+    end
+    
+    def caching_column_name(dimension = nil)
+      name = options[:cache_column].to_s
+      name += "_#{dimension.gsub(' ', '_').underscore}" if dimension      
+      name      
     end
   end
 end

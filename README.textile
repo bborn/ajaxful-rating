@@ -151,7 +151,7 @@ If you use the plugin inside a namespace you'll need to specify the rating url w
   <%= ratings_for @article, :remote_options => {:url => rate_admin_article_path(@article)} %>
   </code></pre>
 
-h3. Cache (Note: caching is broken in this dimensions fork)
+h3. Cache
 
 To cache the model's rating average add a column named @rating_average@ to your model table:
 
@@ -174,6 +174,8 @@ If you want to customise the name of the cache column just pass it in the option
     ajaxful_rateable :cache_column => :my_cached_rating
   end
   </code></pre>
+
+To use caching with dimensions, make sure you have a cache column defined for each dimension you want cached. So if you want to cache the @spelling@ dimension, you'll need to have a column called @rating_average_spelling@ on the articles table. If you use a custom cache column name, follow the pattern @cache_column_name@_@dimension_name@ to add cache columns for dimensions.
 
 h2. About backwards compatibility
 
